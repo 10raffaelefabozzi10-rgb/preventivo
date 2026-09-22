@@ -1,0 +1,2049 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuoteHub - Gestionale Preventivi & Scadenziario Cloud</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        .targa-badge {
+            letter-spacing: 0.1em;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col antialiased selection:bg-brand-500 selection:text-white">
+
+    <!-- SCHERMATA LOGIN OPERATORE -->
+    <div id="loginOverlay" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-slate-200 space-y-6 text-center">
+            <div class="w-20 h-20 bg-brand-50 text-brand-600 rounded-2xl mx-auto flex items-center justify-center text-3xl shadow-sm border border-brand-100">
+                <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <div>
+                <h2 class="text-2xl font-extrabold text-slate-900 tracking-tight">QuoteHub Accesso Operatori</h2>
+                <p class="text-xs font-bold text-slate-500 mt-1 uppercase tracking-wider">Seleziona il tuo profilo operatore</p>
+            </div>
+            
+            <div id="loginUserButtons" class="grid grid-cols-2 gap-3">
+                <!-- Populated dynamically -->
+            </div>
+
+            <div id="pinInputContainer" class="hidden space-y-3 pt-2">
+                <p class="text-xs font-bold text-slate-600">Inserisci PIN per <span id="selectedUserLabel" class="font-extrabold text-slate-900"></span> (Default: 1234)</p>
+                <input type="password" id="loginPinInput" maxlength="6" placeholder="••••" class="w-full text-center tracking-widest text-lg py-3 bg-slate-50 border border-slate-300 rounded-2xl text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-brand-500">
+                <button type="button" onclick="submitLogin()" class="w-full py-3 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs shadow-md transition-all">Accedi al Gestionale</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- HEADER -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            
+            <!-- Logo & Title -->
+            <div class="flex items-center space-x-3">
+                <div class="bg-brand-600 text-white p-3 rounded-2xl shadow-sm flex items-center justify-center">
+                    <i class="fa-solid fa-shield-halved text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight text-slate-900 leading-tight flex items-center gap-2">
+                        QuoteHub 
+                        <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-brand-50 text-brand-700 border border-brand-200">v4.5 CLOUD</span>
+                        <span id="cloudSyncStatusBadge" class="text-xs font-medium px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1.5" title="Sincronizzato in Cloud in Tempo Reale per tutti gli utenti">
+                            <i class="fa-solid fa-cloud text-emerald-600 text-xs animate-pulse"></i>
+                            <span>Cloud Live</span>
+                        </span>
+                    </h1>
+                    <p class="text-xs text-slate-500 hidden sm:block">Gestionale Preventivi Assicurativi, Visura ANIA & Sincronizzazione Cloud Multi-Utente</p>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex items-center space-x-2 sm:space-x-3">
+                <!-- Logged User Badge -->
+                <div id="currentUserBadgeContainer" class="hidden items-center space-x-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-2xl">
+                    <i class="fa-solid fa-user-check text-brand-600 text-xs"></i>
+                    <span id="currentUserNameLabel" class="text-xs font-bold text-slate-700"></span>
+                    <button onclick="logoutUser()" class="text-slate-400 hover:text-rose-600 text-xs ml-1" title="Cambia Utente"><i class="fa-solid fa-right-from-bracket"></i></button>
+                </div>
+
+                <button onclick="openPlateLookupModal()" class="px-3.5 py-2 rounded-2xl bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold border border-slate-300 flex items-center space-x-2 transition-all shadow-xs">
+                    <i class="fa-solid fa-magnifying-glass text-brand-600"></i>
+                    <span class="hidden md:inline">Visura Targa</span>
+                </button>
+
+                <button onclick="openModal()" class="px-5 py-2.5 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold shadow-sm flex items-center space-x-2 transition-all">
+                    <i class="fa-solid fa-plus text-xs"></i>
+                    <span>Nuovo Preventivo</span>
+                </button>
+
+                <!-- More Actions Dropdown -->
+                <div class="relative" id="moreActionsMenu">
+                    <button onclick="toggleMoreMenu()" class="p-2.5 rounded-2xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 transition-all shadow-xs">
+                        <i class="fa-solid fa-ellipsis-vertical text-sm"></i>
+                    </button>
+                    <div id="dropdownMenu" class="hidden absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-2xl shadow-xl py-2 z-50">
+                        <button onclick="exportCSV()" class="w-full text-left px-4 py-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50 flex items-center space-x-2">
+                            <i class="fa-solid fa-file-excel text-brand-600 w-4"></i>
+                            <span>Esporta CSV (Excel)</span>
+                        </button>
+                        <button onclick="exportJSON()" class="w-full text-left px-4 py-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50 flex items-center space-x-2">
+                            <i class="fa-solid fa-file-arrow-down text-brand-600 w-4"></i>
+                            <span>Backup JSON</span>
+                        </button>
+                        <label class="w-full text-left px-4 py-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50 flex items-center space-x-2 cursor-pointer">
+                            <i class="fa-solid fa-file-arrow-up text-brand-600 w-4"></i>
+                            <span>Ripristina JSON</span>
+                            <input type="file" id="importJsonFile" accept=".json" onchange="importJSON(event)" class="hidden">
+                        </label>
+                        <div class="border-t border-slate-100 my-1"></div>
+                        <button onclick="resetToSampleData()" class="w-full text-left px-4 py-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50 flex items-center space-x-2">
+                            <i class="fa-solid fa-rotate-right text-brand-600 w-4"></i>
+                            <span>Carica Dati di Esempio</span>
+                        </button>
+                        <button onclick="clearAllData()" class="w-full text-left px-4 py-2.5 text-xs font-medium text-rose-600 hover:bg-rose-50 flex items-center space-x-2">
+                            <i class="fa-solid fa-trash-can w-4"></i>
+                            <span>Azzera Database</span>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </header>
+
+    <!-- STATS DASHBOARD -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 flex-grow w-full">
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            
+            <div class="bg-white border border-slate-200 p-4 rounded-3xl shadow-xs flex items-center space-x-3">
+                <div class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-lg shrink-0">
+                    <i class="fa-solid fa-file-lines text-brand-600"></i>
+                </div>
+                <div>
+                    <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Totale Preventivi</p>
+                    <h3 id="statTotalCount" class="text-2xl font-bold text-slate-900">0</h3>
+                </div>
+            </div>
+
+            <div class="bg-white border border-slate-200 p-4 rounded-3xl shadow-xs flex items-center space-x-3">
+                <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-lg shrink-0">
+                    <i class="fa-solid fa-clock"></i>
+                </div>
+                <div>
+                    <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Scadenze Mese</p>
+                    <h3 id="statPolicyExpiringMonth" class="text-2xl font-bold text-amber-600">0</h3>
+                </div>
+            </div>
+
+            <div class="bg-white border border-rose-300 p-4 rounded-3xl shadow-sm flex items-center space-x-3 bg-rose-50/30">
+                <div class="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center font-bold text-lg shrink-0">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+                <div>
+                    <p class="text-[11px] font-bold text-rose-600 uppercase tracking-wider">Polizze Scadute</p>
+                    <h3 id="statPolicyExpired" class="text-2xl font-bold text-rose-700">0</h3>
+                </div>
+            </div>
+
+            <div class="bg-white border border-slate-200 p-4 rounded-3xl shadow-xs flex items-center space-x-3">
+                <div class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-lg shrink-0">
+                    <i class="fa-solid fa-paperclip text-brand-600"></i>
+                </div>
+                <div>
+                    <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Allegati Caricati</p>
+                    <h3 id="statDocsTotal" class="text-2xl font-bold text-slate-900">0</h3>
+                </div>
+            </div>
+
+            <div class="bg-white border border-brand-200 p-4 rounded-3xl shadow-sm col-span-2 md:col-span-1 flex items-center space-x-3 bg-brand-50/20">
+                <div class="w-12 h-12 rounded-2xl bg-brand-100 text-brand-700 flex items-center justify-center font-bold text-lg shrink-0">
+                    <i class="fa-solid fa-euro-sign"></i>
+                </div>
+                <div>
+                    <p class="text-[11px] font-bold text-brand-700 uppercase tracking-wider">Accettati (€)</p>
+                    <h3 id="statConfirmedAmount" class="text-xl font-bold text-brand-800">€ 0,00</h3>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- OPERATOR & COMPANY BREAKDOWN BAR -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div class="bg-white border border-slate-200 p-5 rounded-3xl shadow-xs space-y-3">
+                <span class="text-xs font-bold uppercase text-slate-700 tracking-wider">Riepilogo per Operatore</span>
+                <div id="operatorBreakdownContainer" class="grid grid-cols-4 gap-2">
+                    <!-- Populated via JS -->
+                </div>
+            </div>
+            <div class="bg-white border border-slate-200 p-5 rounded-3xl shadow-xs space-y-3 lg:col-span-2">
+                <span class="text-xs font-bold uppercase text-slate-700 tracking-wider">Compagnie Più Richieste</span>
+                <div id="companyBreakdownContainer" class="flex flex-wrap gap-2 pt-1">
+                    <!-- Populated via JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- TOOLBAR & FILTERS -->
+        <div class="bg-white border border-slate-200 p-5 rounded-3xl shadow-xs space-y-4">
+            
+            <div class="flex flex-col lg:flex-row items-center justify-between gap-4">
+                
+                <!-- Search Input -->
+                <div class="relative w-full lg:w-80">
+                    <span class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                        <i class="fa-solid fa-search text-xs"></i>
+                    </span>
+                    <input type="text" id="searchInput" oninput="renderAppView()" placeholder="Cerca cliente, targa, operatore..." 
+                           class="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-2xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                </div>
+
+                <!-- Status Filter Pills -->
+                <div class="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+                    <button onclick="setStatusFilter('ALL')" id="filterBtn-ALL" class="filter-btn px-4 py-2 rounded-2xl text-xs font-semibold bg-slate-900 text-white shadow-xs transition-all">Tutti</button>
+                    <button onclick="setStatusFilter('IN_ATTESA')" id="filterBtn-IN_ATTESA" class="filter-btn px-4 py-2 rounded-2xl text-xs font-semibold bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 transition-all">In Attesa</button>
+                    <button onclick="setStatusFilter('IN_TRATTATIVA')" id="filterBtn-IN_TRATTATIVA" class="filter-btn px-4 py-2 rounded-2xl text-xs font-semibold bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 transition-all">In Trattativa</button>
+                    <button onclick="setStatusFilter('ACCETTATO')" id="filterBtn-ACCETTATO" class="filter-btn px-4 py-2 rounded-2xl text-xs font-semibold bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 transition-all">Accettati</button>
+                    <button onclick="setStatusFilter('RIFIUTATO')" id="filterBtn-RIFIUTATO" class="filter-btn px-4 py-2 rounded-2xl text-xs font-semibold bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 transition-all">Rifiutati</button>
+                </div>
+
+                <!-- View Mode Selector (List vs Monthly) -->
+                <div class="flex items-center space-x-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200 w-full lg:w-auto justify-end">
+                    <button onclick="setViewMode('LIST')" id="viewModeListBtn" class="px-4 py-2 rounded-xl text-xs font-semibold bg-white text-slate-900 shadow-xs transition-all flex items-center space-x-1.5">
+                        <i class="fa-solid fa-list"></i>
+                        <span>Elenco</span>
+                    </button>
+                    <button onclick="setViewMode('MONTHLY')" id="viewModeMonthlyBtn" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-200 transition-all flex items-center space-x-1.5">
+                        <i class="fa-solid fa-calendar-days"></i>
+                        <span>Mese per Mese</span>
+                    </button>
+                </div>
+
+            </div>
+
+            <!-- SECONDARY DROPDOWN FILTERS -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-3 border-t border-slate-100">
+                <select id="operatorFilterSelect" onchange="renderAppView()" class="px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-2xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    <option value="ALL">👤 Tutti gli Operatori</option>
+                </select>
+
+                <select id="companyFilterSelect" onchange="renderAppView()" class="px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-2xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    <option value="ALL">🏢 Tutte le Compagnie</option>
+                </select>
+
+                <select id="policyExpiryFilterSelect" onchange="renderAppView()" class="px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-2xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    <option value="ALL">📅 Tutte le Scadenze Polizza</option>
+                    <option value="EXPIRED">🔴 Scadute</option>
+                    <option value="EXPIRING_15">⏳ In Scadenza (15 giorni)</option>
+                    <option value="THIS_MONTH">🗓️ In Scadenza questo Mese</option>
+                    <option value="NEXT_MONTH">🗓️ In Scadenza il Mese Prossimo</option>
+                </select>
+
+                <select id="sortSelect" onchange="renderAppView()" class="px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-2xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    <option value="policy-asc">Scadenza Polizza (Crescente)</option>
+                    <option value="date-desc">Data Creazione (Recenti)</option>
+                    <option value="client-asc">Nome Cliente (A-Z)</option>
+                    <option value="plate-asc">Targa (A-Z)</option>
+                    <option value="operator-asc">Operatore (A-Z)</option>
+                </select>
+            </div>
+
+            <div id="monthlyGroupFieldContainer" class="hidden flex items-center space-x-2 pt-3 border-t border-slate-100">
+                <span class="text-xs font-bold text-slate-600 uppercase">Raggruppa per:</span>
+                <select id="monthlyGroupSelect" onchange="renderAppView()" class="px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none">
+                    <option value="policyExpiry">Scadenza Polizza</option>
+                    <option value="quoteExpiry">Scadenza Preventivo</option>
+                    <option value="createdAt">Data Inserimento Pratica</option>
+                </select>
+            </div>
+
+        </div>
+
+        <!-- TABLE VIEW SECTION -->
+        <div id="listViewSection" class="bg-white border border-slate-200 rounded-3xl shadow-xs overflow-hidden">
+            <div class="overflow-x-auto custom-scrollbar">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 text-[11px] font-bold uppercase tracking-wider">
+                            <th class="py-4 px-4">Operatore</th>
+                            <th class="py-4 px-4">Targa</th>
+                            <th class="py-4 px-4">Cliente / Servizio</th>
+                            <th class="py-4 px-4">Scadenza Polizza</th>
+                            <th class="py-4 px-4">Allegati</th>
+                            <th class="py-4 px-4">Compagnie e Prezzi (⭐ Evidenziati)</th>
+                            <th class="py-4 px-4">Validità Offerta</th>
+                            <th class="py-4 px-4">Stato</th>
+                            <th class="py-4 px-4 text-right">Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody id="quotesTableBody" class="divide-y divide-slate-100 text-sm">
+                        <!-- Populated via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- MONTHLY VIEW SECTION -->
+        <div id="monthlyViewSection" class="hidden space-y-6">
+            <div id="monthlyGroupsContainer" class="space-y-6"></div>
+        </div>
+
+        <!-- EMPTY STATE -->
+        <div id="emptyState" class="hidden bg-white border border-slate-200 rounded-3xl p-12 text-center space-y-4 shadow-xs">
+            <div class="w-20 h-20 bg-slate-100 text-slate-400 rounded-3xl mx-auto flex items-center justify-center text-3xl">
+                <i class="fa-solid fa-folder-open"></i>
+            </div>
+            <div>
+                <h3 class="text-lg font-bold text-slate-900">Nessun preventivo trovato</h3>
+                <p class="text-xs text-slate-500 mt-1">Non ci sono preventivi che corrispondono ai filtri selezionati o il database è vuoto.</p>
+            </div>
+            <button onclick="openModal()" class="px-6 py-3 bg-brand-600 hover:bg-brand-700 text-white rounded-2xl text-xs font-semibold shadow-sm transition-all inline-flex items-center space-x-2">
+                <i class="fa-solid fa-plus"></i>
+                <span>Crea Nuovo Preventivo</span>
+            </button>
+        </div>
+    </main>
+
+    <!-- MODALE CREAZIONE / MODIFICA PREVENTIVO -->
+    <div id="quoteModal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onclick="closeModal()"></div>
+        <div class="flex min-h-full items-center justify-center p-4">
+            <div class="relative transform overflow-hidden rounded-3xl bg-white border border-slate-200 p-6 sm:p-8 text-left shadow-2xl transition-all w-full max-w-5xl space-y-6">
+                
+                <div class="flex items-center justify-between pb-4 border-b border-slate-200">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-xl shadow-xs">
+                            <i id="modalHeaderIcon" class="fa-solid fa-plus text-base text-brand-600"></i>
+                        </div>
+                        <div>
+                            <h3 id="modalTitle" class="text-lg font-bold text-slate-900">Nuovo Preventivo Cliente</h3>
+                            <p class="text-xs text-slate-500">Compaginate le offerte e confronta i prezzi per il cliente</p>
+                        </div>
+                    </div>
+                    <button onclick="closeModal()" class="p-2.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-2xl transition-all">
+                        <i class="fa-solid fa-xmark text-base"></i>
+                    </button>
+                </div>
+
+                <form id="quoteForm" onsubmit="saveQuote(event)" class="space-y-6">
+                    <input type="hidden" id="quoteId">
+
+                    <!-- SEZIONE 1: DATI PRINCIPALI -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 bg-slate-50 p-5 rounded-3xl border border-slate-200 shadow-2xs">
+                        
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Operatore Gestore *</label>
+                            <div class="space-y-2">
+                                <select id="operatorSelect" onchange="handleOperatorSelectChange()" class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-2xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                                    <option value="RAFFAELE">RAFFAELE</option>
+                                    <option value="COSTANTINO">COSTANTINO</option>
+                                    <option value="KEKKO">KEKKO</option>
+                                    <option value="IVANO">IVANO</option>
+                                    <option value="CUSTOM">Altro Operatore...</option>
+                                </select>
+                                <input type="text" id="customOperatorInput" placeholder="Nome operatore..." class="hidden w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-2xl text-xs font-semibold text-slate-800 focus:outline-none">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Targa Veicolo</label>
+                            <div class="flex space-x-1.5">
+                                <input type="text" id="plateInput" oninput="formatPlateInput(this)" placeholder="AB123CD" maxlength="10" 
+                                       class="w-full uppercase tracking-widest px-3.5 py-2.5 bg-white border border-slate-300 rounded-2xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                                <button type="button" onclick="openPlateLookupWithTarget(document.getElementById('plateInput').value, '')" class="px-3.5 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl text-xs font-semibold shadow-xs" title="Visura ANIA">
+                                    <i class="fa-solid fa-shield-halved"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Nome e Cognome / Società *</label>
+                            <input type="text" id="clientName" required placeholder="Mario Rossi" 
+                                   class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-2xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Telefono / WhatsApp</label>
+                            <input type="text" id="clientPhone" placeholder="+39 333 1234567" 
+                                   class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-2xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Email Cliente</label>
+                            <input type="email" id="clientEmail" placeholder="mario@email.it" 
+                                   class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-2xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Servizio / Polizza</label>
+                            <input type="text" id="serviceDescription" placeholder="es. RCA Auto Fiat Panda" 
+                                   class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-2xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Compagnia Provenienza</label>
+                            <input type="text" id="previousCompany" placeholder="es. Generali" 
+                                   class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-2xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                        </div>
+
+                        <div>
+                            <div class="flex items-center justify-between mb-1">
+                                <label class="block text-xs font-bold uppercase text-slate-600">Anni Assicurato</label>
+                                <label class="inline-flex items-center space-x-1 text-[11px] font-semibold text-brand-700 cursor-pointer">
+                                    <input type="checkbox" id="isNA" onchange="handleNACheckboxChange(this)" class="rounded text-brand-600 focus:ring-brand-500 w-4 h-4 border border-slate-300">
+                                    <span>N.A.</span>
+                                </label>
+                            </div>
+                            <select id="insuredYears" class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-2xl text-xs font-semibold text-slate-800 focus:outline-none">
+                                <option value="0">0 Anni</option>
+                                <option value="1">1 Anno</option>
+                                <option value="2">2 Anni</option>
+                                <option value="3">3 Anni</option>
+                                <option value="4">4 Anni</option>
+                                <option value="5+">5+ Anni</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Scadenza Polizza Attuale</label>
+                            <input type="date" id="policyExpiryDate" 
+                                   class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-2xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Validità Preventivo</label>
+                            <input type="date" id="expiryDate" 
+                                   class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-2xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Stato Pratica</label>
+                            <select id="status" class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-2xl text-xs font-semibold text-slate-800 focus:outline-none">
+                                <option value="IN_ATTESA">⏳ In Attesa</option>
+                                <option value="IN_TRATTATIVA">💬 In Trattativa</option>
+                                <option value="ACCETTATO">✅ Accettato</option>
+                                <option value="RIFIUTATO">❌ Rifiutato</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Note Generali</label>
+                            <input type="text" id="notes" placeholder="Eventuali note sulla trattativa..." 
+                                   class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-2xl text-xs font-medium text-slate-900 focus:outline-none">
+                        </div>
+
+                    </div>
+
+                    <!-- SEZIONE 2: GRIGLIA COMPAGNIE A SCHERMO INTERO (CON EVIDENZA VISIVA) -->
+                    <div class="space-y-4 bg-gradient-to-br from-brand-50/80 to-emerald-50/40 p-6 rounded-3xl border-2 border-brand-300 shadow-md">
+                        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-2 border-b border-brand-200">
+                            <div>
+                                <h4 class="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-2">
+                                    <i class="fa-solid fa-building-columns text-brand-600 text-base"></i>
+                                    <span>Inserimento Prezzi & Garanzie (⭐ Spunta la Compagnia Scelta dal Cliente)</span>
+                                </h4>
+                                <p class="text-[11px] text-slate-600 font-semibold mt-0.5">Inserisci gli importi in € e spunta la scelta definitiva del cliente. La scheda evidenziata in verde indica l'offerta vincente.</p>
+                            </div>
+                            <button type="button" onclick="addCustomCompanyCard()" class="px-4 py-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center space-x-1.5 shadow-sm transition-all shrink-0">
+                                <i class="fa-solid fa-plus text-brand-400"></i>
+                                <span>+ Compagnia Manuale</span>
+                            </button>
+                        </div>
+
+                        <div id="companyFullGridContainer" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 pt-1">
+                            <!-- Populated via JS with emphasized styling -->
+                        </div>
+                    </div>
+
+                    <!-- MODAL FOOTER -->
+                    <div class="flex items-center justify-end space-x-3 pt-4 border-t border-slate-200">
+                        <button type="button" onclick="closeModal()" class="px-6 py-3 rounded-2xl bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold transition-all">Annulla</button>
+                        <button type="submit" class="px-8 py-3 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shadow-md transition-all">Salva Preventivo</button>
+                    </div>
+                </form>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE VISURA TARGA / PORTALE ANIA -->
+    <div id="plateLookupModal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="lookupModalTitle" role="dialog" aria-modal="true">
+        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onclick="closePlateLookupModal()"></div>
+        <div class="flex min-h-full items-center justify-center p-4">
+            <div class="relative transform overflow-hidden rounded-3xl bg-white border border-slate-200 p-6 text-left shadow-2xl transition-all w-full max-w-xl space-y-5">
+                <div class="flex items-center justify-between pb-3 border-b border-slate-200">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-xl shadow-xs">
+                            <i class="fa-solid fa-shield-halved text-brand-600"></i>
+                        </div>
+                        <div>
+                            <h3 id="lookupModalTitle" class="text-base font-bold text-slate-900">Visura Targa & Portale ANIA Allianz</h3>
+                            <p class="text-xs text-slate-500">Verifica copertura RCA e storico sinistri</p>
+                        </div>
+                    </div>
+                    <button onclick="closePlateLookupModal()" class="p-2.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-2xl">
+                        <i class="fa-solid fa-xmark text-sm"></i>
+                    </button>
+                </div>
+
+                <div class="space-y-4">
+                    <!-- Box Credenziali Agenzia -->
+                    <div class="bg-slate-50 p-4 rounded-3xl border border-slate-200 space-y-2">
+                        <p class="text-xs font-bold uppercase text-slate-700">Credenziali Portale Agenzie Allianz</p>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                            <div class="flex items-center justify-between bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs">
+                                <span class="text-slate-600">User: <strong class="text-slate-900 font-semibold">AARFABOZZI</strong></span>
+                                <button onclick="copyToClipboard('AARFABOZZI', 'Username')" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-medium text-[10px] transition-all">Copia</button>
+                            </div>
+                            <div class="flex items-center justify-between bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs">
+                                <span class="text-slate-600">Pass: <strong class="text-slate-900 font-semibold">Napoli1200@</strong></span>
+                                <button onclick="copyToClipboard('Napoli1200@', 'Password')" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-medium text-[10px] transition-all">Copia</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Input Targa per Ricerca -->
+                    <div class="space-y-2">
+                        <label class="block text-xs font-bold uppercase text-slate-700">Inserisci o Seleziona Targa da Verificare</label>
+                        <div class="flex space-x-2">
+                            <input type="text" id="lookupPlateInput" placeholder="es. AB123CD" maxlength="10" 
+                                   class="w-full uppercase tracking-widest px-4 py-3 bg-slate-50 border border-slate-300 rounded-2xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            <button onclick="executePlateLookup()" class="px-5 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl text-xs font-semibold shadow-xs">Verifica</button>
+                        </div>
+                    </div>
+
+                    <!-- Risultato Azione -->
+                    <div id="lookupResultContainer" class="hidden"></div>
+
+                    <!-- Link diretto portale -->
+                    <div class="pt-2">
+                        <button onclick="openAllianzPortalWithPlate()" class="w-full py-3.5 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold shadow-sm flex items-center justify-center space-x-2 transition-all">
+                            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                            <span>Copia Targa & Apri Portale ANIA Allianz</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE GESTIONE DOCUMENTI E ALLEGATI -->
+    <div id="documentsModal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="docsModalTitle" role="dialog" aria-modal="true">
+        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onclick="closeDocumentsModal()"></div>
+        <div class="flex min-h-full items-center justify-center p-4">
+            <div class="relative transform overflow-hidden rounded-3xl bg-white border border-slate-200 p-6 text-left shadow-2xl transition-all w-full max-w-2xl space-y-5">
+                <div class="flex items-center justify-between pb-3 border-b border-slate-200">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-xl shadow-xs">
+                            <i class="fa-solid fa-paperclip text-brand-600"></i>
+                        </div>
+                        <div>
+                            <h3 id="docsModalTitle" class="text-base font-bold text-slate-900">Documenti & Allegati Pratica</h3>
+                            <p id="docsModalSubtitle" class="text-xs text-slate-500">Libretto, Carta d'Identità, Codice Fiscale, ecc.</p>
+                        </div>
+                    </div>
+                    <button onclick="closeDocumentsModal()" class="p-2.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-2xl">
+                        <i class="fa-solid fa-xmark text-sm"></i>
+                    </button>
+                </div>
+
+                <div class="space-y-4">
+                    <!-- UPLOAD BOX -->
+                    <div class="bg-slate-50 p-4 rounded-3xl border border-slate-200 space-y-3">
+                        <p class="text-xs font-bold uppercase text-slate-700">Carica Nuovo Documento</p>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <select id="docCategorySelect" class="px-3.5 py-2.5 bg-white border border-slate-300 rounded-2xl text-xs font-semibold text-slate-800 focus:outline-none">
+                                <option value="Libretto di Circolazione">Libretto di Circolazione</option>
+                                <option value="Carta d'Identità">Carta d'Identità</option>
+                                <option value="Codice Fiscale">Codice Fiscale</option>
+                                <option value="Patente di Guida">Patente di Guida</option>
+                                <option value="Attestato di Rischio">Attestato di Rischio</option>
+                                <option value="Altro Documento">Altro Documento</option>
+                            </select>
+                            <input type="file" id="docFileInput" accept="image/*,.pdf" class="text-xs text-slate-600 font-medium file:mr-2 file:py-2 file:px-4 file:rounded-2xl file:border-0 file:text-xs file:font-semibold file:bg-slate-900 file:text-white hover:file:bg-slate-800 cursor-pointer">
+                            <button onclick="uploadSelectedDocument()" class="py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-2xl text-xs font-semibold shadow-xs transition-all">Carica File</button>
+                        </div>
+                    </div>
+
+                    <!-- LISTA DOCUMENTI ALLEGATI -->
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold uppercase text-slate-700">File Allegati</span>
+                            <span id="docsCountBadge" class="text-xs font-semibold px-3 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">0 allegati</span>
+                        </div>
+                        <div id="documentsListContainer" class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-60 overflow-y-auto custom-scrollbar">
+                            <!-- Populated via JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE ANTEPRIMA DOCUMENTO -->
+    <div id="fullImagePreviewModal" class="fixed inset-0 z-50 hidden overflow-y-auto" role="dialog" aria-modal="true">
+        <div class="fixed inset-0 bg-slate-900/80 backdrop-blur-md" onclick="closeFullImagePreviewModal()"></div>
+        <div class="flex min-h-full items-center justify-center p-4">
+            <div class="relative max-w-4xl w-full bg-white border border-slate-200 rounded-3xl p-4 shadow-2xl space-y-3">
+                <div class="flex items-center justify-between pb-2 border-b border-slate-200">
+                    <h4 id="previewDocTitle" class="text-xs font-bold text-slate-900 uppercase">Anteprima Documento</h4>
+                    <button onclick="closeFullImagePreviewModal()" class="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-2xl"><i class="fa-solid fa-xmark text-sm"></i></button>
+                </div>
+                <div class="flex justify-center bg-slate-100 p-3 rounded-2xl max-h-[75vh] overflow-auto">
+                    <img id="previewDocImage" src="" alt="Anteprima" class="max-h-[70vh] object-contain rounded-2xl">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CONFERMA AZIONI -->
+    <div id="confirmModal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="confirmModalTitle" role="dialog" aria-modal="true">
+        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onclick="window.closeConfirmModal(false)"></div>
+        <div class="flex min-h-full items-center justify-center p-4 text-center">
+            <div class="relative transform overflow-hidden rounded-3xl bg-white border border-slate-200 p-6 text-left shadow-2xl transition-all w-full max-w-md space-y-4">
+                <div class="flex items-center space-x-3 text-amber-600">
+                    <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-xl shrink-0">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                    </div>
+                    <h3 id="confirmModalTitle" class="text-base font-bold text-slate-900">Conferma Operazione</h3>
+                </div>
+                <p id="confirmModalMessage" class="text-xs text-slate-600 leading-relaxed"></p>
+                <div class="flex justify-end space-x-2 pt-2">
+                    <button type="button" onclick="window.closeConfirmModal(false)" class="px-5 py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-all">Annulla</button>
+                    <button type="button" id="confirmModalActionButton" onclick="window.closeConfirmModal(true)" class="px-5 py-2.5 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow-xs transition-all">Conferma</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+    <script>
+        window.pendingConfirmCallback = null;
+        window.closeConfirmModal = function(confirmed) {
+            const modal = document.getElementById('confirmModal');
+            if (modal) modal.classList.add('hidden');
+            if (confirmed && typeof window.pendingConfirmCallback === 'function') {
+                window.pendingConfirmCallback();
+            }
+            window.pendingConfirmCallback = null;
+        };
+        window.askConfirmation = function(title, message, callback) {
+            const titleEl = document.getElementById('confirmModalTitle');
+            const msgEl = document.getElementById('confirmModalMessage');
+            if (titleEl) titleEl.innerText = title;
+            if (msgEl) msgEl.innerText = message;
+            window.pendingConfirmCallback = callback;
+            const modal = document.getElementById('confirmModal');
+            if (modal) modal.classList.remove('hidden');
+        };
+    </script>
+
+    <!-- FIREBASE SDK & APPLICATION LOGIC FOR CLOUD REALTIME SYNC -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'quotehub-cloud-v4';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+            apiKey: "",
+            authDomain: "",
+            projectId: "",
+            storageBucket: "",
+            messagingSenderId: "",
+            appId: ""
+        };
+
+        let app, db, auth, userId = null;
+        let isCloudConnected = false;
+
+        const DEFAULT_OPERATORS = ['RAFFAELE', 'COSTANTINO', 'KEKKO', 'IVANO'];
+        const USER_ACCOUNTS = [
+            { id: 1, name: 'RAFFAELE', pin: '1234' },
+            { id: 2, name: 'COSTANTINO', pin: '1234' },
+            { id: 3, name: 'KEKKO', pin: '1234' },
+            { id: 4, name: 'IVANO', pin: '1234' }
+        ];
+
+        let currentActiveUser = null;
+        let selectedLoginUser = null;
+
+        const MASTER_COMPANIES = [
+            'AXA MAZZA',
+            'ALLIANZ MAZZA',
+            'PRIMA MAZZA',
+            'ALLIANZ TELESE',
+            'UNIPOLSAI PIEDIMONTE',
+            'GENERALI VERDE',
+            'SARA FRAGOLA',
+            'NOBIS INTHERMEDIA',
+            'GROUPAMA DINO',
+            'GENERTEL DELLA PORTA',
+            'BROKER VARIE'
+        ];
+
+        const ALLIANZ_INQUIRY_URL = 'https://portaleagenzie.allianz.it/Auto/InquiryAnia/Ricerca.aspx';
+
+        let quotes = [];
+        let currentStatusFilter = 'ALL';
+        let currentViewMode = 'LIST';
+        let currentLookupQuoteId = null;
+        let currentDocModalQuoteId = null;
+
+        window.onload = async function() {
+            initLoginScreen();
+            checkAuth();
+            await initFirebase();
+            
+            document.addEventListener('click', function(e) {
+                const menu = document.getElementById('dropdownMenu');
+                if (menu && !menu.contains(e.target) && !e.target.closest('button[onclick="toggleMoreMenu()"]')) {
+                    menu.classList.add('hidden');
+                }
+            });
+        };
+
+        async function initFirebase() {
+            try {
+                if (firebaseConfig && firebaseConfig.projectId) {
+                    app = initializeApp(firebaseConfig);
+                    db = getFirestore(app);
+                    auth = getAuth(app);
+
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+
+                    userId = auth.currentUser?.uid || crypto.randomUUID();
+                    isCloudConnected = true;
+                    updateCloudBadge(true);
+                    setupCloudListener();
+                } else {
+                    throw new Error("No config");
+                }
+            } catch (e) {
+                console.warn("Cloud offline fallback to local cache:", e);
+                isCloudConnected = false;
+                updateCloudBadge(false);
+                loadLocalQuotesCache();
+                renderAppView();
+                updateDashboard();
+            }
+        }
+
+        function updateCloudBadge(online) {
+            const badge = document.getElementById('cloudSyncStatusBadge');
+            if (!badge) return;
+            if (online) {
+                badge.className = "text-xs font-medium px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1.5";
+                badge.innerHTML = `<i class="fa-solid fa-cloud text-emerald-600 text-xs animate-pulse"></i><span>Cloud Live</span>`;
+            } else {
+                badge.className = "text-xs font-medium px-3 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1.5";
+                badge.innerHTML = `<i class="fa-solid fa-hard-drive text-amber-600 text-xs"></i><span>Locale Standalone</span>`;
+            }
+        }
+
+        function setupCloudListener() {
+            if (!db) return;
+            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'quotes_master_db');
+            
+            onSnapshot(docRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    if (data && Array.isArray(data.quotes)) {
+                        quotes = data.quotes;
+                    }
+                } else {
+                    quotes = getSampleQuotes();
+                    saveQuotesToCloud();
+                }
+                renderAppView();
+                updateDashboard();
+            }, (error) => {
+                console.error("Cloud snapshot error:", error);
+                loadLocalQuotesCache();
+                renderAppView();
+                updateDashboard();
+            });
+        }
+
+        async function saveQuotesToCloud() {
+            if (!db || !isCloudConnected) {
+                saveToLocalStorage();
+                return;
+            }
+            try {
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'quotes_master_db');
+                await setDoc(docRef, { quotes, updatedAt: new Date().toISOString() });
+            } catch (e) {
+                console.error("Error saving to cloud:", e);
+                saveToLocalStorage();
+            }
+        }
+
+        function loadLocalQuotesCache() {
+            const saved = localStorage.getItem('qh_quotes_db');
+            if (saved) {
+                try {
+                    quotes = JSON.parse(saved);
+                } catch (e) {
+                    quotes = getSampleQuotes();
+                }
+            } else {
+                quotes = getSampleQuotes();
+                saveToLocalStorage();
+            }
+        }
+
+        function saveToLocalStorage() {
+            localStorage.setItem('qh_quotes_db', JSON.stringify(quotes));
+        }
+
+        function initLoginScreen() {
+            const container = document.getElementById('loginUserButtons');
+            if (!container) return;
+
+            container.innerHTML = USER_ACCOUNTS.map(u => `
+                <button type="button" onclick="selectUserForLogin('${u.name}')" 
+                        class="p-4 rounded-2xl border border-slate-200 font-bold text-xs flex flex-col items-center justify-center space-y-2 bg-slate-50 text-slate-700 hover:bg-slate-900 hover:text-white transition-all shadow-2xs">
+                    <i class="fa-solid fa-user-circle text-2xl text-brand-600"></i>
+                    <span>Utente ${u.id}: ${u.name}</span>
+                </button>
+            `).join('');
+        }
+
+        window.selectUserForLogin = function(username) {
+            selectedLoginUser = username;
+            document.getElementById('selectedUserLabel').innerText = username;
+            document.getElementById('pinInputContainer').classList.remove('hidden');
+            const pinInput = document.getElementById('loginPinInput');
+            pinInput.value = '';
+            pinInput.focus();
+
+            pinInput.onkeyup = function(e) {
+                if (e.key === 'Enter') submitLogin();
+            };
+        };
+
+        window.submitLogin = function() {
+            if (!selectedLoginUser) return;
+            const account = USER_ACCOUNTS.find(u => u.name === selectedLoginUser);
+            const pinInput = document.getElementById('loginPinInput');
+            const inputPin = ((pinInput ? pinInput.value : '') || '').trim();
+
+            if (account && (inputPin === account.pin || inputPin === '1234')) {
+                currentActiveUser = account.name;
+                localStorage.setItem('qh_logged_user', currentActiveUser);
+                const overlay = document.getElementById('loginOverlay');
+                if (overlay) overlay.classList.add('hidden');
+                updateUserHeaderBadge();
+                showToast(`Benvenuto ${currentActiveUser}!`, "success");
+            } else {
+                showToast("PIN non corretto! (Usa 1234)", "danger");
+            }
+        };
+
+        function checkAuth() {
+            const savedUser = localStorage.getItem('qh_logged_user');
+            const overlay = document.getElementById('loginOverlay');
+            if (savedUser && USER_ACCOUNTS.some(u => u.name === savedUser)) {
+                currentActiveUser = savedUser;
+                if (overlay) overlay.classList.add('hidden');
+                updateUserHeaderBadge();
+            } else {
+                if (overlay) overlay.classList.remove('hidden');
+            }
+        }
+
+        window.logoutUser = function() {
+            currentActiveUser = null;
+            localStorage.removeItem('qh_logged_user');
+            const overlay = document.getElementById('loginOverlay');
+            if (overlay) overlay.classList.remove('hidden');
+            const pinContainer = document.getElementById('pinInputContainer');
+            if (pinContainer) pinContainer.classList.add('hidden');
+            selectedLoginUser = null;
+            updateUserHeaderBadge();
+            showToast("Disconnesso con successo", "info");
+        };
+
+        function updateUserHeaderBadge() {
+            const badge = document.getElementById('currentUserBadgeContainer');
+            const label = document.getElementById('currentUserNameLabel');
+            if (currentActiveUser) {
+                if (label) label.innerText = currentActiveUser;
+                if (badge) {
+                    badge.classList.remove('hidden');
+                    badge.classList.add('flex');
+                }
+            } else {
+                if (badge) {
+                    badge.classList.add('hidden');
+                    badge.classList.remove('flex');
+                }
+            }
+        }
+
+        function getRelativeDate(daysOffset) {
+            const d = new Date();
+            d.setDate(d.getDate() + daysOffset);
+            return d.toISOString().split('T')[0];
+        }
+
+        function getSampleQuotes() {
+            return [
+                {
+                    id: 'q-101',
+                    operator: 'RAFFAELE',
+                    plate: 'FJ892KL',
+                    clientName: 'Marco Rossi',
+                    clientPhone: '+39 333 1234567',
+                    clientEmail: 'm.rossi@email.it',
+                    serviceDescription: 'RCA Auto Fiat Panda',
+                    previousCompany: 'GENERALI',
+                    insuredYears: '3',
+                    isNA: false,
+                    policyExpiryDate: getRelativeDate(5),
+                    expiryDate: getRelativeDate(10),
+                    companies: [
+                        { name: 'ALLIANZ MAZZA', amount: 420.00, isSelected: true, note: 'RCA + Furto/Incendio + Cristalli' },
+                        { name: 'UNIPOLSAI PIEDIMONTE', amount: 480.00, isSelected: false, note: 'RCA + Infortuni Conducente' },
+                        { name: 'PRIMA MAZZA', amount: 390.00, isSelected: false, note: 'Solo RCA base' }
+                    ],
+                    documents: [],
+                    status: 'IN_ATTESA',
+                    notes: 'Cliente orientato verso ALLIANZ MAZZA.',
+                    createdAt: new Date().toISOString()
+                }
+            ];
+        }
+
+        function getFilteredQuotes() {
+            const query = (document.getElementById('searchInput').value || '').toLowerCase().trim();
+            const operatorFilter = document.getElementById('operatorFilterSelect').value;
+            const companyFilter = document.getElementById('companyFilterSelect').value;
+            const policyExpiryFilter = document.getElementById('policyExpiryFilterSelect').value;
+            const sortMode = document.getElementById('sortSelect').value;
+
+            const now = new Date();
+            const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+            return quotes.filter(q => {
+                if (query) {
+                    const matchQuery = 
+                        (q.plate || '').toLowerCase().includes(query) ||
+                        (q.clientName || '').toLowerCase().includes(query) ||
+                        (q.operator || '').toLowerCase().includes(query) ||
+                        (q.serviceDescription || '').toLowerCase().includes(query) ||
+                        (q.previousCompany || '').toLowerCase().includes(query) ||
+                        (q.notes || '').toLowerCase().includes(query) ||
+                        (q.companies || []).some(c => c.name.toLowerCase().includes(query) || (c.note || '').toLowerCase().includes(query));
+                    if (!matchQuery) return false;
+                }
+
+                if (currentStatusFilter !== 'ALL' && q.status !== currentStatusFilter) return false;
+                if (operatorFilter !== 'ALL' && (q.operator || '').toUpperCase() !== operatorFilter) return false;
+
+                if (companyFilter !== 'ALL') {
+                    const hasComp = (q.companies || []).some(c => c.name.toUpperCase() === companyFilter);
+                    if (!hasComp) return false;
+                }
+
+                if (policyExpiryFilter !== 'ALL' && q.policyExpiryDate) {
+                    const pDate = new Date(q.policyExpiryDate);
+                    const diffDays = Math.ceil((pDate - startOfToday) / (1000 * 60 * 60 * 24));
+
+                    if (policyExpiryFilter === 'EXPIRED' && diffDays >= 0) return false;
+                    if (policyExpiryFilter === 'EXPIRING_15' && (diffDays < 0 || diffDays > 15)) return false;
+                    if (policyExpiryFilter === 'THIS_MONTH') {
+                        const isThisMonth = pDate.getMonth() === now.getMonth() && pDate.getFullYear() === now.getFullYear();
+                        if (!isThisMonth) return false;
+                    }
+                    if (policyExpiryFilter === 'NEXT_MONTH') {
+                        const nextM = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+                        const isNextMonth = pDate.getMonth() === nextM.getMonth() && pDate.getFullYear() === nextM.getFullYear();
+                        if (!isNextMonth) return false;
+                    }
+                }
+
+                return true;
+            }).sort((a, b) => {
+                if (sortMode === 'policy-asc') return (new Date(a.policyExpiryDate || '9999-12-31')) - (new Date(b.policyExpiryDate || '9999-12-31'));
+                if (sortMode === 'date-desc') return new Date(b.createdAt) - new Date(a.createdAt);
+                if (sortMode === 'client-asc') return (a.clientName || '').localeCompare(b.clientName || '');
+                if (sortMode === 'plate-asc') return (a.plate || '').localeCompare(b.plate || '');
+                if (sortMode === 'operator-asc') return (a.operator || '').localeCompare(b.operator || '');
+                return 0;
+            });
+        }
+
+        window.renderAppView = function() {
+            populateFilterDropdowns();
+            const filtered = getFilteredQuotes();
+
+            const emptyState = document.getElementById('emptyState');
+            const listView = document.getElementById('listViewSection');
+            const monthlyView = document.getElementById('monthlyViewSection');
+
+            if (filtered.length === 0) {
+                emptyState.classList.remove('hidden');
+                listView.classList.add('hidden');
+                monthlyView.classList.add('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+
+            if (currentViewMode === 'LIST') {
+                listView.classList.remove('hidden');
+                monthlyView.classList.add('hidden');
+                renderTableList(filtered);
+            } else {
+                listView.classList.add('hidden');
+                monthlyView.classList.remove('hidden');
+                renderMonthlyGroups(filtered);
+            }
+        };
+
+        function populateFilterDropdowns() {
+            const opSelect = document.getElementById('operatorFilterSelect');
+            const compSelect = document.getElementById('companyFilterSelect');
+
+            const currentOpVal = opSelect.value;
+            const currentCompVal = compSelect.value;
+
+            const operators = Array.from(new Set(quotes.map(q => (q.operator || '').toUpperCase()).filter(Boolean))).sort();
+            opSelect.innerHTML = `<option value="ALL">👤 Tutti gli Operatori</option>` +
+                operators.map(o => `<option value="${o}" ${o === currentOpVal ? 'selected' : ''}>👤 ${o}</option>`).join('');
+
+            const companiesSet = new Set(MASTER_COMPANIES);
+            quotes.forEach(q => (q.companies || []).forEach(c => companiesSet.add(c.name.toUpperCase())));
+            const companiesList = Array.from(companiesSet).sort();
+
+            compSelect.innerHTML = `<option value="ALL">🏢 Tutte le Compagnie</option>` +
+                companiesList.map(c => `<option value="${c}" ${c === currentCompVal ? 'selected' : ''}>🏢 ${c}</option>`).join('');
+        }
+
+        function renderTableList(items) {
+            const tbody = document.getElementById('quotesTableBody');
+            tbody.innerHTML = items.map(q => {
+                const policyExpiryStatus = getExpiryStatusBadge(q.policyExpiryDate);
+                const docCount = (q.documents || []).length;
+
+                return `
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="py-4 px-4 font-semibold text-xs whitespace-nowrap">
+                        <span class="px-3 py-1.5 rounded-xl text-[11px] font-bold border border-slate-300 bg-slate-100 text-slate-900 shadow-2xs">
+                            👤 ${escapeHtml(q.operator || 'N.D.')}
+                        </span>
+                    </td>
+                    <td class="py-4 px-4 whitespace-nowrap">
+                        ${q.plate ? `
+                            <div class="flex items-center space-x-1.5">
+                                <span class="targa-badge font-black text-xs px-2.5 py-1 rounded-xl bg-slate-900 text-white shadow-2xs tracking-wider">
+                                    ${escapeHtml(q.plate)}
+                                </span>
+                                <button onclick="openPlateLookupWithTarget('${escapeHtml(q.plate)}', '${q.id}')" title="Visura ANIA Allianz" class="text-slate-600 hover:text-brand-600 text-xs p-1 bg-slate-100 rounded-lg border border-slate-200">
+                                    <i class="fa-solid fa-shield-halved"></i>
+                                </button>
+                            </div>
+                        ` : '<span class="text-xs text-slate-400 italic font-medium">Nessuna targa</span>'}
+                    </td>
+                    <td class="py-4 px-4">
+                        <div class="font-bold text-slate-900 text-xs">${escapeHtml(q.clientName)}</div>
+                        <div class="text-[11px] text-brand-700 font-bold">${escapeHtml(q.serviceDescription)}</div>
+                        <div class="flex flex-wrap items-center gap-1.5 mt-1">
+                            ${q.previousCompany ? `<span class="text-[10px] px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 font-medium border border-slate-200">Prov: ${escapeHtml(q.previousCompany)}</span>` : ''}
+                            ${q.isNA ? '<span class="text-[10px] px-2 py-0.5 rounded-lg bg-brand-50 text-brand-700 font-black border border-brand-200">N.A.</span>' : `<span class="text-[10px] px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 font-bold border border-slate-200">${q.insuredYears || 0} Anni</span>`}
+                        </div>
+                    </td>
+                    <td class="py-4 px-4 whitespace-nowrap">${policyExpiryStatus}</td>
+                    <td class="py-4 px-4 whitespace-nowrap">
+                        <button onclick="openDocumentsModal('${q.id}')" class="px-3 py-1.5 rounded-2xl text-xs font-semibold transition-all ${docCount > 0 ? 'bg-slate-900 text-white shadow-2xs hover:bg-slate-800' : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'} flex items-center space-x-1.5">
+                            <i class="fa-solid fa-paperclip text-brand-500"></i>
+                            <span>${docCount} Doc</span>
+                        </button>
+                    </td>
+                    <td class="py-4 px-4 min-w-[340px]">
+                        <div class="flex flex-wrap gap-2">
+                            ${(q.companies || []).map(c => `
+                                <div class="px-3 py-2 rounded-2xl text-[11px] border transition-all ${c.isSelected ? 'bg-brand-50 border-brand-500 text-brand-900 font-bold shadow-sm ring-2 ring-brand-500' : 'bg-slate-50 border-slate-200 text-slate-700 font-medium'}">
+                                    <div class="flex items-center justify-between gap-2">
+                                        <span class="${c.isSelected ? 'font-bold text-brand-900' : 'font-semibold text-slate-800'}">${escapeHtml(c.name)}:</span>
+                                        <span class="font-bold ${c.isSelected ? 'text-brand-700 text-xs' : 'text-slate-900'}">€ ${parseFloat(c.amount || 0).toFixed(2)}</span>
+                                        ${c.isSelected ? '<i class="fa-solid fa-circle-check text-brand-600 text-xs ml-0.5" title="Scelta Cliente ⭐"></i>' : ''}
+                                    </div>
+                                    ${c.note ? `<div class="text-[10px] ${c.isSelected ? 'text-brand-800 font-semibold' : 'text-slate-500'} italic mt-0.5 truncate max-w-[200px]">${escapeHtml(c.note)}</div>` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </td>
+                    <td class="py-4 px-4 whitespace-nowrap text-xs font-semibold text-slate-700">
+                        ${q.expiryDate ? formatDateIt(q.expiryDate) : '<span class="text-slate-400">-</span>'}
+                    </td>
+                    <td class="py-4 px-4 whitespace-nowrap">${getStatusBadge(q.status)}</td>
+                    <td class="py-4 px-4 whitespace-nowrap text-right space-x-1">
+                        ${q.clientPhone ? `
+                            <button onclick="sendWhatsApp('${q.id}')" class="p-2.5 bg-white text-slate-700 hover:bg-emerald-600 hover:text-white rounded-2xl transition-all border border-slate-300 shadow-2xs" title="Invia WhatsApp">
+                                <i class="fa-brands fa-whatsapp text-base text-emerald-600 group-hover:text-white"></i>
+                            </button>
+                        ` : ''}
+                        <button onclick="editQuote('${q.id}')" class="p-2.5 bg-white text-slate-700 hover:bg-slate-900 hover:text-white rounded-2xl transition-all border border-slate-300 shadow-2xs" title="Modifica">
+                            <i class="fa-solid fa-pen-to-square text-sm"></i>
+                        </button>
+                        <button onclick="deleteQuote('${q.id}')" class="p-2.5 bg-white text-rose-600 hover:bg-rose-600 hover:text-white rounded-2xl transition-all border border-slate-300 shadow-2xs" title="Elimina">
+                            <i class="fa-solid fa-trash text-sm"></i>
+                        </button>
+                    </td>
+                </tr>
+                `;
+            }).join('');
+        }
+
+        function renderMonthlyGroups(items) {
+            const container = document.getElementById('monthlyGroupsContainer');
+            const groupField = document.getElementById('monthlyGroupSelect').value;
+            const groups = {};
+
+            items.forEach(q => {
+                let dateStr = q.policyExpiryDate || q.expiryDate || q.createdAt;
+                if (groupField === 'quoteExpiry') dateStr = q.expiryDate || q.policyExpiryDate || q.createdAt;
+                if (groupField === 'createdAt') dateStr = q.createdAt;
+
+                const d = new Date(dateStr);
+                const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                const monthLabel = d.toLocaleString('it-IT', { month: 'long', year: 'numeric' });
+
+                if (!groups[monthKey]) {
+                    groups[monthKey] = { label: monthLabel.toUpperCase(), items: [] };
+                }
+                groups[monthKey].items.push(q);
+            });
+
+            const sortedKeys = Object.keys(groups).sort();
+
+            container.innerHTML = sortedKeys.map(key => {
+                const grp = groups[key];
+                return `
+                <div class="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
+                    <div class="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
+                        <h3 class="text-xs font-bold tracking-wider uppercase flex items-center gap-2">
+                            <i class="fa-solid fa-calendar-days text-brand-500"></i>
+                            <span>${grp.label}</span>
+                        </h3>
+                        <span class="text-xs font-semibold px-3.5 py-1 rounded-full bg-white text-slate-900 shadow-2xs">
+                            ${grp.items.length} Pratiche
+                        </span>
+                    </div>
+                    <div class="overflow-x-auto custom-scrollbar">
+                        <table class="w-full text-left border-collapse">
+                            <tbody class="divide-y divide-slate-100 text-sm">
+                                ${grp.items.map(q => {
+                                    return `
+                                    <tr class="hover:bg-slate-50 transition-colors">
+                                        <td class="py-3.5 px-4 whitespace-nowrap">
+                                            <span class="px-3 py-1 rounded-xl text-[11px] font-bold border border-slate-300 bg-slate-100 text-slate-900">
+                                                👤 ${escapeHtml(q.operator || 'N.D.')}
+                                            </span>
+                                        </td>
+                                        <td class="py-3.5 px-4 font-bold text-xs">
+                                            ${q.plate ? `<span class="targa-badge px-2.5 py-1 rounded-xl bg-slate-900 text-white shadow-2xs">${escapeHtml(q.plate)}</span>` : ''}
+                                        </td>
+                                        <td class="py-3.5 px-4 font-bold text-xs text-slate-900">
+                                            ${escapeHtml(q.clientName)}
+                                            <div class="text-[11px] text-brand-700 font-bold">${escapeHtml(q.serviceDescription)}</div>
+                                        </td>
+                                        <td class="py-3.5 px-4 whitespace-nowrap">${getExpiryStatusBadge(q.policyExpiryDate)}</td>
+                                        <td class="py-3.5 px-4">
+                                            <div class="flex flex-wrap gap-1.5">
+                                                ${(q.companies || []).map(c => `
+                                                    <span class="px-2.5 py-1 rounded-xl text-[10px] font-semibold border ${c.isSelected ? 'bg-brand-50 text-brand-900 border-brand-400 font-bold shadow-2xs' : 'bg-slate-50 text-slate-700 border-slate-200'}">
+                                                        ${escapeHtml(c.name)}: €${parseFloat(c.amount||0).toFixed(2)}
+                                                    </span>
+                                                `).join('')}
+                                            </div>
+                                        </td>
+                                        <td class="py-3.5 px-4 whitespace-nowrap">${getStatusBadge(q.status)}</td>
+                                        <td class="py-3.5 px-4 text-right whitespace-nowrap">
+                                            <button onclick="editQuote('${q.id}')" class="p-2 bg-white text-slate-700 hover:bg-slate-900 hover:text-white rounded-2xl border border-slate-300 transition-all"><i class="fa-solid fa-pen-to-square"></i></button>
+                                        </td>
+                                    </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+
+        window.updateDashboard = function() {
+            document.getElementById('statTotalCount').innerText = quotes.length;
+
+            const now = new Date();
+            const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+            let expiringMonth = 0;
+            let expired = 0;
+            let totalDocs = 0;
+            let confirmedVal = 0;
+
+            const opCounts = {};
+            DEFAULT_OPERATORS.forEach(op => opCounts[op] = 0);
+            const companyCounts = {};
+
+            quotes.forEach(q => {
+                if (q.operator) {
+                    const opKey = q.operator.toUpperCase();
+                    opCounts[opKey] = (opCounts[opKey] || 0) + 1;
+                }
+
+                if (q.documents) totalDocs += q.documents.length;
+
+                if (q.policyExpiryDate) {
+                    const pDate = new Date(q.policyExpiryDate);
+                    const diffDays = Math.ceil((pDate - startOfToday) / (1000 * 60 * 60 * 24));
+
+                    if (diffDays < 0) expired++;
+                    if (pDate.getMonth() === now.getMonth() && pDate.getFullYear() === now.getFullYear()) {
+                        expiringMonth++;
+                    }
+                }
+
+                (q.companies || []).forEach(c => {
+                    companyCounts[c.name] = (companyCounts[c.name] || 0) + 1;
+                    if (q.status === 'ACCETTATO' && c.isSelected) {
+                        confirmedVal += parseFloat(c.amount || 0);
+                    }
+                });
+            });
+
+            document.getElementById('statPolicyExpiringMonth').innerText = expiringMonth;
+            document.getElementById('statPolicyExpired').innerText = expired;
+            document.getElementById('statDocsTotal').innerText = totalDocs;
+            document.getElementById('statConfirmedAmount').innerText = '€ ' + confirmedVal.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+            const opContainer = document.getElementById('operatorBreakdownContainer');
+            opContainer.innerHTML = Object.keys(opCounts).map(op => {
+                return `
+                <div class="p-3 rounded-2xl border border-slate-200 bg-slate-50 text-center shadow-2xs">
+                    <span class="text-[10px] font-bold uppercase text-slate-500 block truncate">${op}</span>
+                    <span class="text-xl font-bold text-slate-900">${opCounts[op]}</span>
+                </div>
+                `;
+            }).join('');
+
+            const compContainer = document.getElementById('companyBreakdownContainer');
+            compContainer.innerHTML = Object.keys(companyCounts).map(c => `
+                <span class="px-3 py-1.5 rounded-2xl text-xs font-semibold bg-slate-50 text-slate-700 border border-slate-200 flex items-center gap-2 shadow-2xs">
+                    <span>${escapeHtml(c)}</span>
+                    <span class="bg-slate-200 text-slate-800 px-2 py-0.5 rounded-xl text-[10px] font-bold">${companyCounts[c]}</span>
+                </span>
+            `).join('');
+        };
+
+        window.saveQuote = function(event) {
+            event.preventDefault();
+
+            const id = document.getElementById('quoteId').value;
+            const operator = getSelectedOperatorValue();
+            const plate = (document.getElementById('plateInput').value || '').toUpperCase().trim();
+            const clientName = document.getElementById('clientName').value.trim();
+            const clientPhone = document.getElementById('clientPhone').value.trim();
+            const clientEmail = document.getElementById('clientEmail').value.trim();
+            const serviceDescription = document.getElementById('serviceDescription').value.trim();
+            const previousCompany = (document.getElementById('previousCompany').value || '').trim();
+            const insuredYears = document.getElementById('insuredYears').value;
+            const isNA = document.getElementById('isNA').checked;
+            const policyExpiryDate = document.getElementById('policyExpiryDate').value;
+            const expiryDate = document.getElementById('expiryDate').value;
+            const status = document.getElementById('status').value;
+            const notes = document.getElementById('notes').value.trim();
+
+            const companies = getCompaniesFromFullGrid();
+
+            if (companies.length === 0) {
+                showToast("Inserisci un importo o nota in almeno una compagnia nella griglia!", "warning");
+                return;
+            }
+
+            let quoteObj;
+            let existingDocList = [];
+
+            if (id) {
+                const existingIndex = quotes.findIndex(q => q.id === id);
+                if (existingIndex !== -1) {
+                    existingDocList = quotes[existingIndex].documents || [];
+                }
+                quoteObj = {
+                    id,
+                    operator,
+                    plate,
+                    clientName,
+                    clientPhone,
+                    clientEmail,
+                    serviceDescription,
+                    previousCompany,
+                    insuredYears,
+                    isNA,
+                    policyExpiryDate,
+                    companies,
+                    documents: existingDocList,
+                    expiryDate,
+                    status,
+                    notes,
+                    createdAt: quotes.find(q => q.id === id)?.createdAt || new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                };
+                const index = quotes.findIndex(q => q.id === id);
+                if (index !== -1) quotes[index] = quoteObj;
+                showToast("Preventivo aggiornato salvato in Cloud!", "success");
+            } else {
+                quoteObj = {
+                    id: 'q-' + Date.now(),
+                    operator,
+                    plate,
+                    clientName,
+                    clientPhone,
+                    clientEmail,
+                    serviceDescription,
+                    previousCompany,
+                    insuredYears,
+                    isNA,
+                    policyExpiryDate,
+                    companies,
+                    documents: [],
+                    expiryDate,
+                    status,
+                    notes,
+                    createdAt: new Date().toISOString()
+                };
+                quotes.unshift(quoteObj);
+                showToast("Nuovo preventivo salvato in Cloud!", "success");
+            }
+
+            saveQuotesToCloud();
+            renderAppView();
+            updateDashboard();
+            closeModal();
+        };
+
+        window.deleteQuote = function(id) {
+            askConfirmation("Elimina Preventivo", "Sei sicuro di voler eliminare questo preventivo?", () => {
+                quotes = quotes.filter(q => q.id !== id);
+                saveQuotesToCloud();
+                renderAppView();
+                updateDashboard();
+                showToast("Preventivo eliminato", "info");
+            });
+        };
+
+        window.deleteDocument = function(docIndex) {
+            if (!currentDocModalQuoteId) return;
+            const q = quotes.find(item => item.id === currentDocModalQuoteId);
+            if (!q || !q.documents) return;
+
+            askConfirmation("Elimina Allegato", "Vuoi rimuovere questo documento?", () => {
+                q.documents.splice(docIndex, 1);
+                saveQuotesToCloud();
+                renderDocumentsList(q.documents);
+                renderAppView();
+                updateDashboard();
+                showToast("Allegato rimosso", "info");
+            });
+        };
+
+        window.resetToSampleData = function() {
+            askConfirmation("Ripristino Dati", "Ripristinare i dati di esempio iniziali?", () => {
+                quotes = getSampleQuotes();
+                saveQuotesToCloud();
+                renderAppView();
+                updateDashboard();
+                showToast("Dati di esempio caricati!", "success");
+            });
+        };
+
+        window.clearAllData = function() {
+            askConfirmation("Azzera Database", "Cancellare TUTTI i preventivi salvati?", () => {
+                quotes = [];
+                saveQuotesToCloud();
+                renderAppView();
+                updateDashboard();
+                showToast("Database azzerato!", "info");
+            });
+        };
+
+        function renderFullCompanyGrid(existingCompanies = []) {
+            const container = document.getElementById('companyFullGridContainer');
+            const compMap = {};
+            existingCompanies.forEach(c => compMap[c.name.toUpperCase()] = c);
+
+            const allCompanies = Array.from(new Set([...MASTER_COMPANIES, ...existingCompanies.map(c => c.name.toUpperCase())]));
+
+            container.innerHTML = allCompanies.map((cName) => {
+                const existing = compMap[cName] || {};
+                const isSel = existing.isSelected || false;
+                const amt = existing.amount !== undefined ? existing.amount : '';
+                const note = existing.note || '';
+
+                return `
+                <div class="company-card p-4 rounded-2xl border-2 transition-all ${isSel ? 'bg-emerald-50/90 border-emerald-500 shadow-md ring-2 ring-emerald-400' : 'bg-white border-slate-200 shadow-2xs hover:border-brand-400'} space-y-3">
+                    <div class="flex items-center justify-between pb-1 border-b border-slate-100">
+                        <label class="text-xs font-black text-slate-900 truncate mr-1" title="${escapeHtml(cName)}">
+                            ${escapeHtml(cName)}
+                        </label>
+                        <label class="inline-flex items-center space-x-1 cursor-pointer text-[10px] font-black uppercase text-white bg-slate-900 px-2.5 py-1 rounded-xl shadow-2xs hover:bg-brand-600 transition-all ${isSel ? '!bg-emerald-600 ring-2 ring-emerald-200' : ''}">
+                            <input type="radio" name="selectedCompanyRadio" value="${escapeHtml(cName)}" ${isSel ? 'checked' : ''} onchange="highlightSelectedCompanyCard()" class="text-brand-600 focus:ring-brand-500 w-3.5 h-3.5">
+                            <span>⭐ SCELTA</span>
+                        </label>
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] font-bold uppercase text-slate-500 mb-1">Importo Offerta (€)</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-xs font-bold text-brand-700">€</span>
+                            <input type="number" step="0.01" min="0" placeholder="0.00" value="${amt}" data-company-name="${escapeHtml(cName)}"
+                                   class="company-price-input w-full pl-7 pr-3 py-2.5 bg-white border-2 border-slate-300 rounded-xl text-xs font-black text-slate-900 focus:outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100 shadow-2xs">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] font-bold uppercase text-slate-500 mb-1">Note & Garanzie Specifiche</label>
+                        <input type="text" placeholder="es. RCA + Cristalli + Furto..." value="${escapeHtml(note)}" data-company-note="${escapeHtml(cName)}"
+                               class="company-note-input w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-[11px] font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-brand-500 shadow-2xs">
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+
+        window.highlightSelectedCompanyCard = function() {
+            const cards = document.querySelectorAll('.company-card');
+            const selectedRadio = document.querySelector('input[name="selectedCompanyRadio"]:checked');
+            const selectedName = selectedRadio ? selectedRadio.value : null;
+
+            cards.forEach(card => {
+                const priceInput = card.querySelector('.company-price-input');
+                if (priceInput) {
+                    const name = priceInput.getAttribute('data-company-name');
+                    const radio = card.querySelector('input[type="radio"]');
+                    if (name === selectedName) {
+                        card.className = "company-card p-4 rounded-2xl border-2 transition-all bg-emerald-50/90 border-emerald-500 shadow-md ring-2 ring-emerald-400 space-y-3";
+                        if (radio) {
+                            const badge = radio.parentElement;
+                            if (badge) badge.className = "inline-flex items-center space-x-1 cursor-pointer text-[10px] font-black uppercase text-white bg-emerald-600 px-2.5 py-1 rounded-xl shadow-2xs ring-2 ring-emerald-200 transition-all";
+                        }
+                    } else {
+                        card.className = "company-card p-4 rounded-2xl border-2 transition-all bg-white border-slate-200 shadow-2xs hover:border-brand-400 space-y-3";
+                        if (radio) {
+                            const badge = radio.parentElement;
+                            if (badge) badge.className = "inline-flex items-center space-x-1 cursor-pointer text-[10px] font-black uppercase text-white bg-slate-900 px-2.5 py-1 rounded-xl shadow-2xs hover:bg-brand-600 transition-all";
+                        }
+                    }
+                }
+            });
+        };
+
+        window.addCustomCompanyCard = function() {
+            const customName = prompt("Inserisci il nome della nuova Compagnia/Fornitore:");
+            if (!customName || !customName.trim()) return;
+
+            const nameUpper = customName.trim().toUpperCase();
+            const existingCards = getCompaniesFromFullGrid();
+            if (existingCards.some(c => c.name.toUpperCase() === nameUpper)) {
+                showToast("Compagnia già presente nella griglia", "warning");
+                return;
+            }
+
+            existingCards.push({ name: nameUpper, amount: '', isSelected: false, note: '' });
+            renderFullCompanyGrid(existingCards);
+            showToast(`Aggiunta compagnia ${nameUpper}`, "success");
+        };
+
+        function getCompaniesFromFullGrid() {
+            const result = [];
+            const cards = document.querySelectorAll('.company-card');
+            const selectedRadio = document.querySelector('input[name="selectedCompanyRadio"]:checked');
+            const selectedName = selectedRadio ? selectedRadio.value : null;
+
+            cards.forEach(card => {
+                const priceInput = card.querySelector('.company-price-input');
+                const noteInput = card.querySelector('.company-note-input');
+
+                if (priceInput) {
+                    const name = priceInput.getAttribute('data-company-name');
+                    const valStr = priceInput.value.trim();
+                    const noteStr = noteInput ? noteInput.value.trim() : '';
+
+                    if (valStr !== '' || noteStr !== '') {
+                        result.push({
+                            name,
+                            amount: valStr !== '' ? parseFloat(valStr) : 0,
+                            isSelected: (name === selectedName),
+                            note: noteStr
+                        });
+                    }
+                }
+            });
+
+            return result;
+        }
+
+        window.openModal = function(isEdit = false) {
+            const modal = document.getElementById('quoteModal');
+            modal.classList.remove('hidden');
+
+            if (!isEdit) {
+                document.getElementById('quoteForm').reset();
+                document.getElementById('quoteId').value = '';
+                document.getElementById('modalTitle').innerText = 'Nuovo Preventivo Cliente';
+                document.getElementById('modalHeaderIcon').className = 'fa-solid fa-plus text-base text-brand-600';
+                document.getElementById('status').value = 'IN_ATTESA';
+                
+                document.getElementById('previousCompany').value = '';
+                document.getElementById('insuredYears').value = '0';
+                document.getElementById('isNA').checked = false;
+
+                setOperatorFormValue(currentActiveUser || 'RAFFAELE');
+                renderFullCompanyGrid([]);
+            }
+        };
+
+        window.closeModal = function() {
+            document.getElementById('quoteModal').classList.add('hidden');
+        };
+
+        function setOperatorFormValue(op) {
+            const select = document.getElementById('operatorSelect');
+            const customInput = document.getElementById('customOperatorInput');
+            const cleanOp = (op || 'RAFFAELE').toUpperCase().trim();
+
+            if (DEFAULT_OPERATORS.includes(cleanOp)) {
+                select.value = cleanOp;
+                customInput.classList.add('hidden');
+            } else {
+                select.value = 'CUSTOM';
+                customInput.classList.remove('hidden');
+                customInput.value = cleanOp;
+            }
+        }
+
+        function getSelectedOperatorValue() {
+            const select = document.getElementById('operatorSelect');
+            if (select.value === 'CUSTOM') {
+                return (document.getElementById('customOperatorInput').value || 'RAFFAELE').toUpperCase().trim();
+            }
+            return select.value;
+        }
+
+        window.handleOperatorSelectChange = function() {
+            const select = document.getElementById('operatorSelect');
+            const customInput = document.getElementById('customOperatorInput');
+            if (select.value === 'CUSTOM') {
+                customInput.classList.remove('hidden');
+                customInput.focus();
+            } else {
+                customInput.classList.add('hidden');
+            }
+        };
+
+        window.formatPlateInput = function(input) {
+            input.value = input.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        };
+
+        window.handleNACheckboxChange = function(chk) {
+            if (chk.checked) {
+                document.getElementById('previousCompany').value = 'N.A.';
+                document.getElementById('insuredYears').value = '0';
+            }
+        };
+
+        window.editQuote = function(id) {
+            const q = quotes.find(item => item.id === id);
+            if (!q) return;
+
+            document.getElementById('quoteId').value = q.id;
+            setOperatorFormValue(q.operator);
+            document.getElementById('plateInput').value = q.plate || '';
+            document.getElementById('clientName').value = q.clientName || '';
+            document.getElementById('clientPhone').value = q.clientPhone || '';
+            document.getElementById('clientEmail').value = q.clientEmail || '';
+            document.getElementById('serviceDescription').value = q.serviceDescription || '';
+            document.getElementById('previousCompany').value = q.previousCompany || '';
+            document.getElementById('insuredYears').value = q.insuredYears !== undefined ? q.insuredYears : '0';
+            document.getElementById('isNA').checked = !!q.isNA;
+            document.getElementById('policyExpiryDate').value = q.policyExpiryDate || '';
+            document.getElementById('expiryDate').value = q.expiryDate || '';
+            document.getElementById('status').value = q.status || 'IN_ATTESA';
+            document.getElementById('notes').value = q.notes || '';
+
+            renderFullCompanyGrid(q.companies || []);
+
+            document.getElementById('modalTitle').innerText = 'Modifica Preventivo';
+            document.getElementById('modalHeaderIcon').className = 'fa-solid fa-pen-to-square text-base text-brand-600';
+
+            openModal(true);
+        };
+
+        window.openDocumentsModal = function(quoteId) {
+            currentDocModalQuoteId = quoteId;
+            const q = quotes.find(item => item.id === quoteId);
+            if (!q) return;
+
+            document.getElementById('docsModalTitle').innerText = `Documenti - ${q.clientName}`;
+            document.getElementById('docsModalSubtitle').innerText = q.plate ? `Targa: ${q.plate}` : q.serviceDescription;
+
+            renderDocumentsList(q.documents || []);
+            document.getElementById('documentsModal').classList.remove('hidden');
+        };
+
+        window.closeDocumentsModal = function() {
+            document.getElementById('documentsModal').classList.add('hidden');
+            currentDocModalQuoteId = null;
+        };
+
+        function renderDocumentsList(docs) {
+            const container = document.getElementById('documentsListContainer');
+            document.getElementById('docsCountBadge').innerText = `${docs.length} allegati`;
+
+            if (docs.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-2 py-6 text-center text-slate-400 text-xs font-medium italic bg-slate-50 rounded-2xl border border-dashed border-slate-300">
+                        Nessun documento caricato per questo preventivo.
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = docs.map((d, i) => `
+                <div class="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 shadow-2xs flex items-center justify-between space-x-2">
+                    <div class="flex items-center space-x-2.5 overflow-hidden">
+                        <div class="p-2.5 bg-slate-900 text-white rounded-xl shrink-0 shadow-2xs">
+                            <i class="fa-solid ${d.type?.includes('pdf') ? 'fa-file-pdf' : 'fa-file-image'} text-brand-400 text-base"></i>
+                        </div>
+                        <div class="overflow-hidden">
+                            <p class="text-xs font-bold text-slate-900 truncate">${escapeHtml(d.category)}</p>
+                            <p class="text-[10px] text-slate-500 truncate">${escapeHtml(d.fileName)}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-1 shrink-0">
+                        <button onclick="previewDocument('${d.fileData}', '${escapeHtml(d.category)}')" class="p-2 bg-slate-900 text-white hover:bg-brand-600 rounded-xl transition-all shadow-2xs" title="Visualizza">
+                            <i class="fa-solid fa-eye text-xs"></i>
+                        </button>
+                        <button onclick="deleteDocument(${i})" class="p-2 bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white rounded-xl transition-all shadow-2xs" title="Elimina">
+                            <i class="fa-solid fa-trash text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        window.uploadSelectedDocument = function() {
+            if (!currentDocModalQuoteId) return;
+            const fileInput = document.getElementById('docFileInput');
+            const categorySelect = document.getElementById('docCategorySelect');
+
+            if (!fileInput.files || fileInput.files.length === 0) {
+                showToast("Seleziona prima un file da allegare!", "warning");
+                return;
+            }
+
+            const file = fileInput.files[0];
+            if (file.size > 3 * 1024 * 1024) {
+                showToast("Il file non può superare i 3MB!", "danger");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const base64Data = e.target.result;
+                const q = quotes.find(item => item.id === currentDocModalQuoteId);
+                if (!q) return;
+
+                if (!q.documents) q.documents = [];
+                q.documents.push({
+                    id: 'doc-' + Date.now(),
+                    category: categorySelect.value,
+                    fileName: file.name,
+                    fileData: base64Data,
+                    uploadedAt: new Date().toISOString()
+                });
+
+                saveQuotesToCloud();
+                renderDocumentsList(q.documents);
+                renderAppView();
+                updateDashboard();
+                showToast("Documento allegato con successo!", "success");
+
+                fileInput.value = '';
+            };
+            reader.readAsDataURL(file);
+        };
+
+        window.previewDocument = function(fileData, title) {
+            document.getElementById('previewDocTitle').innerText = title;
+            document.getElementById('previewDocImage').src = fileData;
+            document.getElementById('fullImagePreviewModal').classList.remove('hidden');
+        };
+
+        window.closeFullImagePreviewModal = function() {
+            document.getElementById('fullImagePreviewModal').classList.add('hidden');
+        };
+
+        window.openPlateLookupModal = function() {
+            document.getElementById('plateLookupModal').classList.remove('hidden');
+        };
+
+        window.openPlateLookupWithTarget = function(plate, quoteId) {
+            currentLookupQuoteId = quoteId;
+            document.getElementById('lookupPlateInput').value = plate;
+            openPlateLookupModal();
+            executePlateLookup();
+        };
+
+        window.closePlateLookupModal = function() {
+            document.getElementById('plateLookupModal').classList.add('hidden');
+        };
+
+        window.copyToClipboard = function(text, label) {
+            const tempInput = document.createElement('textarea');
+            tempInput.value = text;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+            showToast(`${label} copiato negli appunti!`, "success");
+        };
+
+        window.openAllianzPortalWithPlate = function() {
+            const plate = (document.getElementById('lookupPlateInput').value || '').trim().toUpperCase();
+            if (plate) copyToClipboard(plate, `Targa ${plate}`);
+            window.open(ALLIANZ_INQUIRY_URL, '_blank');
+        };
+
+        window.executePlateLookup = function() {
+            const plate = (document.getElementById('lookupPlateInput').value || '').trim().toUpperCase();
+            const resContainer = document.getElementById('lookupResultContainer');
+
+            if (!plate) {
+                showToast("Inserisci una targa da verificare", "warning");
+                return;
+            }
+
+            resContainer.classList.remove('hidden');
+            resContainer.innerHTML = `
+                <div class="p-4 bg-slate-50 border border-slate-200 rounded-2xl text-xs space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="font-bold text-slate-900 flex items-center gap-1.5">
+                            <i class="fa-solid fa-circle-check text-brand-600 text-base"></i>
+                            <span>Scheda Pronta per Visura ANIA</span>
+                        </span>
+                        <span class="targa-badge font-bold px-2.5 py-1 rounded-xl bg-white text-slate-900 border border-slate-300">${escapeHtml(plate)}</span>
+                    </div>
+                    <p class="text-slate-600">La targa è pronta. Clicca sul pulsante in basso per aprire il Portale Allianz ANIA ed incollare la targa nel campo di ricerca.</p>
+                </div>
+            `;
+        };
+
+        window.sendWhatsApp = function(quoteId) {
+            const q = quotes.find(item => item.id === quoteId);
+            if (!q || !q.clientPhone) {
+                showToast("Numero di telefono cliente non presente", "warning");
+                return;
+            }
+
+            const cleanPhone = q.clientPhone.replace(/[^0-9+]/g, '');
+            let msg = `Gentile ${q.clientName},\n\nIn merito alla sua richiesta per ${q.serviceDescription}${q.plate ? ' (Targa: ' + q.plate + ')' : ''}, le comunico la nostra migliore offerta:\n\n`;
+
+            (q.companies || []).forEach(c => {
+                msg += `• *${c.name}*: € ${parseFloat(c.amount || 0).toFixed(2)}${c.note ? ' (' + c.note + ')' : ''}${c.isSelected ? ' ⭐ (Consigliata)' : ''}\n`;
+            });
+
+            if (q.policyExpiryDate) {
+                msg += `\n📅 *Scadenza Polizza Attuale*: ${formatDateIt(q.policyExpiryDate)}`;
+            }
+
+            msg += `\n\nRestiamo a disposizione per l'emissione o chiarimenti.\nDistinti Saluti,\n*${q.operator || 'QuoteHub'}*`;
+
+            const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
+            window.open(url, '_blank');
+        };
+
+        window.setStatusFilter = function(status) {
+            currentStatusFilter = status;
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('bg-slate-900', 'text-white', 'shadow-xs', 'bg-rose-600');
+                btn.classList.add('bg-white', 'text-slate-700', 'border', 'border-slate-300');
+            });
+            const activeBtn = document.getElementById(`filterBtn-${status}`);
+            if (activeBtn) {
+                activeBtn.classList.remove('bg-white', 'text-slate-700', 'border', 'border-slate-300');
+                if (status === 'RIFIUTATO') {
+                    activeBtn.classList.add('bg-rose-600', 'text-white', 'shadow-xs');
+                } else {
+                    activeBtn.classList.add('bg-slate-900', 'text-white', 'shadow-xs');
+                }
+            }
+            renderAppView();
+        };
+
+        window.setViewMode = function(mode) {
+            currentViewMode = mode;
+            const listBtn = document.getElementById('viewModeListBtn');
+            const monthBtn = document.getElementById('viewModeMonthlyBtn');
+            const monthlyGroupContainer = document.getElementById('monthlyGroupFieldContainer');
+
+            if (mode === 'LIST') {
+                listBtn.classList.add('bg-white', 'text-slate-900', 'shadow-xs');
+                listBtn.classList.remove('text-slate-600');
+                monthBtn.classList.remove('bg-white', 'text-slate-900', 'shadow-xs');
+                monthBtn.classList.add('text-slate-600');
+                monthlyGroupContainer.classList.add('hidden');
+            } else {
+                monthBtn.classList.add('bg-white', 'text-slate-900', 'shadow-xs');
+                monthBtn.classList.remove('text-slate-600');
+                listBtn.classList.remove('bg-white', 'text-slate-900', 'shadow-xs');
+                listBtn.classList.add('text-slate-600');
+                monthlyGroupContainer.classList.remove('hidden');
+            }
+            renderAppView();
+        };
+
+        window.toggleMoreMenu = function() {
+            document.getElementById('dropdownMenu').classList.toggle('hidden');
+        };
+
+        function formatDateIt(dateString) {
+            if (!dateString) return '';
+            const parts = dateString.split('-');
+            if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+            return dateString;
+        }
+
+        function getStatusBadge(status) {
+            switch(status) {
+                case 'IN_ATTESA':
+                    return `<span class="px-3 py-1.5 rounded-2xl text-xs font-semibold bg-white text-slate-700 border border-slate-200 flex items-center gap-1.5 w-max shadow-2xs"><i class="fa-solid fa-clock text-slate-400"></i> In Attesa</span>`;
+                case 'IN_TRATTATIVA':
+                    return `<span class="px-3 py-1.5 rounded-2xl text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-300 flex items-center gap-1.5 w-max shadow-2xs"><i class="fa-solid fa-comments text-amber-600"></i> In Trattativa</span>`;
+                case 'ACCETTATO':
+                    return `<span class="px-3 py-1.5 rounded-2xl text-xs font-bold bg-brand-50 text-brand-900 border border-brand-300 flex items-center gap-1.5 w-max shadow-sm"><i class="fa-solid fa-circle-check text-brand-600"></i> Accettato</span>`;
+                case 'RIFIUTATO':
+                    return `<span class="px-3 py-1.5 rounded-2xl text-xs font-semibold bg-rose-50 text-rose-800 border border-rose-300 flex items-center gap-1.5 w-max shadow-2xs"><i class="fa-solid fa-circle-xmark text-rose-600"></i> Rifiutato</span>`;
+                default:
+                    return `<span class="px-3 py-1.5 rounded-2xl text-xs font-semibold bg-slate-100 text-slate-700">${status}</span>`;
+            }
+        }
+
+        function getExpiryStatusBadge(expiryDateStr) {
+            if (!expiryDateStr) return '<span class="text-slate-400 italic text-xs font-medium">Non impostata</span>';
+
+            const now = new Date();
+            const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const expDate = new Date(expiryDateStr);
+            const diffDays = Math.ceil((expDate - startOfToday) / (1000 * 60 * 60 * 24));
+
+            const formatted = formatDateIt(expiryDateStr);
+
+            if (diffDays < 0) {
+                return `
+                    <span class="px-3 py-1.5 rounded-2xl text-xs font-black bg-rose-100 text-rose-800 border-2 border-rose-400 flex items-center gap-1.5 w-max shadow-sm animate-pulse" title="Polizza già scaduta">
+                        <i class="fa-solid fa-triangle-exclamation text-rose-700"></i>
+                        <span>SCADUTA (${formatted})</span>
+                    </span>
+                `;
+            } else if (diffDays <= 15) {
+                return `
+                    <span class="px-3 py-1.5 rounded-2xl text-xs font-bold bg-amber-100 text-amber-900 border border-amber-400 flex items-center gap-1.5 w-max shadow-xs" title="In scadenza imminente">
+                        <i class="fa-solid fa-clock text-amber-700"></i>
+                        <span>Tra ${diffDays} gg (${formatted})</span>
+                    </span>
+                `;
+            } else {
+                return `
+                    <span class="px-3 py-1.5 rounded-2xl text-xs font-semibold bg-slate-50 text-slate-800 border border-slate-200 flex items-center gap-1.5 w-max shadow-2xs">
+                        <i class="fa-regular fa-calendar text-slate-500"></i>
+                        <span>${formatted}</span>
+                    </span>
+                `;
+            }
+        }
+
+        window.exportCSV = function() {
+            if (quotes.length === 0) {
+                showToast("Nessun dato da esportare", "warning");
+                return;
+            }
+
+            const headers = ["ID Pratica", "Operatore", "Targa", "Cliente", "Telefono", "Email", "Servizio/Oggetto", "Compagnia Provenienza", "Anni Assicurati", "Nuovo Acquisto (NA)", "Scadenza Polizza", "Num Documenti", "Compagnie e Prezzi Affiancati", "Validita Offerta", "Stato", "Note"];
+            
+            const rows = quotes.map(q => {
+                const compFormatted = (q.companies || []).map(c => `${c.name}: ${c.amount}€${c.note ? ' (' + c.note + ')' : ''}`).join(" | ");
+                const docCount = (q.documents || []).length;
+                return [
+                    q.id,
+                    `"${(q.operator || '').replace(/"/g, '""')}"`,
+                    `"${(q.plate || '').replace(/"/g, '""')}"`,
+                    `"${(q.clientName || '').replace(/"/g, '""')}"`,
+                    `"${(q.clientPhone || '').replace(/"/g, '""')}"`,
+                    `"${(q.clientEmail || '').replace(/"/g, '""')}"`,
+                    `"${(q.serviceDescription || '').replace(/"/g, '""')}"`,
+                    `"${(q.previousCompany || '').replace(/"/g, '""')}"`,
+                    `"${(q.insuredYears || '0').replace(/"/g, '""')}"`,
+                    q.isNA ? 'SI' : 'NO',
+                    q.policyExpiryDate || '',
+                    docCount,
+                    `"${compFormatted.replace(/"/g, '""')}"`,
+                    q.expiryDate || '',
+                    q.status,
+                    `"${(q.notes || '').replace(/"/g, '""')}"`
+                ];
+            });
+
+            const csvContent = "\uFEFF" + [headers.join(";"), ...rows.map(e => e.join(";"))].join("\n");
+            
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `Preventivi_Scadenziario_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            showToast("CSV esportato con successo!", "success");
+        };
+
+        window.exportJSON = function() {
+            if (quotes.length === 0) {
+                showToast("Nessun dato da esportare", "warning");
+                return;
+            }
+
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(quotes, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `Backup_Preventivi_Scadenziario_${new Date().toISOString().split('T')[0]}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+
+            showToast("Backup scaricato!", "success");
+        };
+
+        window.importJSON = function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    if (Array.isArray(importedData)) {
+                        quotes = importedData;
+                        saveQuotesToCloud();
+                        renderAppView();
+                        updateDashboard();
+                        showToast(`Importati ${quotes.length} preventivi!`, "success");
+                    } else {
+                        showToast("Formato file non valido.", "danger");
+                    }
+                } catch (err) {
+                    showToast("Errore di lettura del file JSON.", "danger");
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        };
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+
+            const toast = document.createElement('div');
+            let bgColors = 'bg-slate-900 text-white';
+            let icon = 'fa-circle-info';
+
+            if (type === 'success') {
+                bgColors = 'bg-brand-600 text-white';
+                icon = 'fa-circle-check';
+            } else if (type === 'danger') {
+                bgColors = 'bg-rose-600 text-white';
+                icon = 'fa-circle-exclamation';
+            } else if (type === 'warning') {
+                bgColors = 'bg-amber-600 text-white';
+                icon = 'fa-triangle-exclamation';
+            }
+
+            toast.className = `pointer-events-auto flex items-center space-x-2.5 px-5 py-3.5 rounded-2xl font-semibold text-xs transition-all transform translate-y-2 opacity-0 shadow-xl ${bgColors}`;
+            toast.innerHTML = `<i class="fa-solid ${icon} text-base"></i> <span>${escapeHtml(message)}</span>`;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            return String(text)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
